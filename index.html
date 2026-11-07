@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="期权信号台">
+<title>商品期权信号台</title>
+<style>
+:root{--bg:#0e1116;--card:#171c24;--line:#252c38;--txt:#e6e9ef;--dim:#8b95a7;
+--green:#22c55e;--yellow:#eab308;--red:#ef4444;--blue:#3b82f6}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.55 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;padding-bottom:86px}
+header{position:sticky;top:0;z-index:9;background:rgba(14,17,22,.97);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:calc(10px + env(safe-area-inset-top)) 14px 10px}
+h1{font-size:17px;margin:0 0 5px;font-weight:600}
+.sub{font-size:12px;color:var(--dim);display:flex;gap:10px;align-items:center}
+button{background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:9px;padding:8px 14px;font-size:14px}
+button:active{background:#222a36}
+button:disabled{opacity:.5}
+.bar{height:3px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:9px}
+.bar i{display:block;height:100%;width:0;background:var(--blue);transition:width .25s}
+.sum{display:flex;gap:8px;margin:10px 12px 0;font-size:12px}
+.sum div{flex:1;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:7px;text-align:center}
+.sum b{display:block;font-size:18px;margin-top:1px}
+main{padding:10px 12px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 14px;margin-bottom:10px}
+.card.sig{border-color:rgba(34,197,94,.6);box-shadow:inset 0 0 0 1px rgba(34,197,94,.12)}
+.card.near{border-color:rgba(234,179,8,.45)}
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.name{font-size:16px;font-weight:600}
+.px{font-variant-numeric:tabular-nums;font-weight:600}
+.pill{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--dim)}
+.pill.g{color:var(--green);border-color:rgba(34,197,94,.45)}
+.pill.y{color:var(--yellow);border-color:rgba(234,179,8,.45)}
+.meta{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:9px;font-size:11.5px}
+.meta div{background:#11161d;border-radius:8px;padding:6px 2px;text-align:center;color:var(--dim)}
+.meta b{display:block;font-size:13px;margin-top:2px;font-weight:600}
+.g{color:var(--green)}.y{color:var(--yellow)}.r{color:var(--red)}.d{color:var(--dim)}
+.plan{margin-top:11px;border-top:1px dashed var(--line);padding-top:10px;font-size:13.5px}
+.plan div{display:flex;justify-content:space-between;padding:3.5px 0}
+.plan b{font-variant-numeric:tabular-nums}
+.plan .hl b{color:var(--green)}
+.hint{font-size:11.5px;color:var(--dim);margin-top:9px;line-height:1.55}
+details{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px}
+summary{font-weight:600;font-size:14px}
+details p,details li{font-size:13px;color:#cfd6e2;line-height:1.75}
+ol,ul{padding-left:18px;margin:8px 0}
+footer{position:fixed;bottom:0;left:0;right:0;background:rgba(14,17,22,.98);border-top:1px solid var(--line);padding:9px 12px calc(9px + env(safe-area-inset-bottom));display:flex;gap:8px}
+footer input{flex:1;background:#11161d;border:1px solid var(--line);color:var(--txt);border-radius:9px;padding:9px 12px;font-size:14px}
+.warn{color:var(--dim);font-size:11px;text-align:center;padding:14px 8px 4px}
+</style>
+</head>
+<body>
+<header>
+  <h1>商品期权信号台</h1>
+  <div class="sub"><span id="stamp">准备中…</span><button id="btn" style="margin-left:auto;padding:5px 12px;font-size:13px">刷新</button></div>
+  <div class="bar"><i id="prog"></i></div>
+</header>
+
+<div class="sum">
+  <div>买入信号<b id="c1" class="g">–</b></div>
+  <div>待触发<b id="c2" class="y">–</b></div>
+  <div>全部品种<b id="c3">–</b></div>
+</div>
+
+<main>
+  <div id="list"><div class="card d">加载中…</div></div>
+
+  <details>
+    <summary>每次打开先看这三步</summary>
+    <ol>
+      <li><b>看顶部数字</b>：绿色“买入信号”是几，就做几张单。</li>
+      <li><b>绿色卡片</b>：里面已算好行权价和手数，照着去交易软件下单。</li>
+      <li><b>黄色卡片</b>：只差最后一步，先别动，等下周。</li>
+    </ol>
+    <p><b>下单前必须核对：</b>该行权价有买价和卖价、价差≤3%、近5日有成交。三项缺一就不做。</p>
+  </details>
+
+  <details>
+    <summary>信号怎么算的（三条同时满足才是绿卡）</summary>
+    <p><b>① 周K金叉</b>：本周周线 MACD 的 DIF 上穿 DEA。</p>
+    <p><b>② 月K多头</b>：月线 DIF &gt; DEA。</p>
+    <p><b>③ 死叉不跌</b>：日线最近一次 MACD 死叉（40 个交易日内）之后，最低收盘没有跌破死叉日收盘的 2%，而且现在还在死叉日收盘之上。</p>
+    <p>页面上的“位置”是价格在过去 120 日区间的位置（0=最低，100%=最高），<b>只作参考，不是过滤条件</b>——数据显示高位反而更好。</p>
+  </details>
+
+  <details>
+    <summary>买入之后怎么管（必须记住）</summary>
+    <ul>
+      <li><b>每天收盘后</b>记下持仓期间的“最高收盘价”，记成 H。</li>
+      <li>H × 0.95 → 卖一半。</li>
+      <li>H × 0.92 → 剩下一半全部卖出。</li>
+      <li>权利金涨到成本 × 3（+200%）→ 全部卖出。</li>
+      <li>权利金跌到成本 × 0.5（−50%）→ 全部卖出。</li>
+      <li>距到期 15 天 → 无条件全平（防止行权变成期货）。</li>
+    </ul>
+    <p>把这些价位提前挂成<b>条件单</b>，不要靠盯盘。</p>
+  </details>
+
+  <details>
+    <summary>三条铁律</summary>
+    <ul>
+      <li><b>只买认购</b>：买认沽实测是负期望。</li>
+      <li><b>只做买方</b>：卖期权风险不封顶，新手不要碰。</li>
+      <li><b>单笔权利金 ≤ 账户 1.5%</b>，同时持仓 ≤ 5 个，同板块 ≤ 2 个。</li>
+    </ul>
+  </details>
+
+  <div class="warn">本页只做规则计算，不构成投资建议。数据来自公开行情接口，可能有延迟或缺失，下单前请在你的交易软件里核对。</div>
+</main>
+
+<footer>
+  <input id="acct" type="number" inputmode="numeric" placeholder="账户资金（元）">
+  <button id="save">重算手数</button>
+</footer>
+
+<script>
+var SY=[
+ {c:"M0",n:"豆粕",  s:"农产品",m:10,  st:50},
+ {c:"C0",n:"玉米",  s:"农产品",m:10,  st:20},
+ {c:"SR0",n:"白糖", s:"农产品",m:10,  st:100},
+ {c:"CF0",n:"棉花", s:"农产品",m:5,   st:500},
+ {c:"RM0",n:"菜粕", s:"农产品",m:10,  st:50},
+ {c:"P0", n:"棕榈油",s:"农产品",m:10, st:50},
+ {c:"A0", n:"豆一", s:"农产品",m:10,  st:50},
+ {c:"OI0",n:"菜油", s:"农产品",m:10,  st:100},
+ {c:"TA0",n:"PTA",  s:"能化",  m:5,   st:100},
+ {c:"MA0",n:"甲醇", s:"能化",  m:10,  st:50},
+ {c:"SA0",n:"纯碱", s:"能化",  m:20,  st:20},
+ {c:"SC0",n:"原油", s:"能化",  m:1000,st:10},
+ {c:"PG0",n:"LPG",  s:"能化",  m:20,  st:50},
+ {c:"PP0",n:"PP",   s:"能化",  m:5,   st:100},
+ {c:"RB0",n:"螺纹", s:"黑色",  m:10,  st:50},
+ {c:"I0", n:"铁矿", s:"黑色",  m:100, st:10},
+ {c:"CU0",n:"铜",   s:"有色",  m:5,   st:1000},
+ {c:"AU0",n:"黄金", s:"有色",  m:1000,st:8},
+ {c:"AL0",n:"铝",   s:"有色",  m:5,   st:200},
+ {c:"AG0",n:"白银", s:"有色",  m:15,  st:100}
+];
+var API="https://stock.finance.sina.com.cn/futures/api/jsonp.php/var%20t=/InnerFuturesNewService.getDailyKLine?symbol=";
+var KEY="optsig_v2", TTL=6*24*3600*1000, ACCT=+(localStorage.getItem("optsig_acct")||300000);
+
+function $(id){return document.getElementById(id)}
+function money(x){return x>=10000?(x/10000).toFixed(1)+"万":Math.round(x)+""}
+
+function ema(a,n){var k=2/(n+1),o=[],p=a[0];for(var i=0;i<a.length;i++){p=i?a[i]*k+p*(1-k):a[i];o.push(p)}return o}
+function macd(a){var f=ema(a,12),s=ema(a,26),dif=[],dea=[],p=0;
+  for(var i=0;i<a.length;i++)dif.push(f[i]-s[i]);
+  var k=2/10;p=dif[0];for(var j=0;j<dif.length;j++){p=j?dif[j]*k+p*(1-k):dif[j];dea.push(p)}
+  return {dif:dif,dea:dea}}
+function wkKey(d){var t=new Date(d.slice(0,10)+"T00:00:00Z");var w=(t.getUTCDay()+6)%7;
+  return new Date(t.getTime()-w*864e5).toISOString().slice(0,10)}
+function moKey(d){return d.slice(0,7)}
+function agg(rows,fn){var out=[],cur=null,last=null;
+  for(var i=0;i<rows.length;i++){var k=fn(rows[i].d);if(k!==cur){if(last!=null)out.push(last);cur=k}last=rows[i].c}
+  if(last!=null)out.push(last);return out}
+
+function analyze(rows){
+  var c=[],h=[],l=[],dt=[];
+  for(var i=0;i<rows.length;i++){c.push(rows[i].c);h.push(rows[i].h);l.push(rows[i].l);dt.push(rows[i].d)}
+  var n=c.length;
+  var wc=agg(rows,wkKey), mc=agg(rows,moKey);
+  var W=macd(wc), M=macd(mc), iw=wc.length-1, im=mc.length-1;
+  var wkCross=(iw>0)&&W.dif[iw]>W.dea[iw]&&W.dif[iw-1]<=W.dea[iw-1];
+  var wkBull=W.dif[iw]>W.dea[iw], moBull=M.dif[im]>M.dea[im];
+
+  var D=macd(c), lc=-1;
+  for(var j=n-1;j>=Math.max(1,n-40);j--){if(D.dif[j]<D.dea[j]&&D.dif[j-1]>=D.dea[j-1]){lc=j;break}}
+  var fail=false,cbase=null,cdate=null;
+  if(lc>0){cbase=c[lc];cdate=dt[lc];var mn=Infinity;
+    for(var k=lc+1;k<n;k++)if(c[k]<mn)mn=c[k];
+    fail=(mn>=cbase*0.98)&&(c[n-1]>=cbase*0.98)}
+
+  var h120=-Infinity,l120=Infinity;
+  for(var q=Math.max(0,n-120);q<n;q++){if(h[q]>h120)h120=h[q];if(l[q]<l120)l120=l[q]}
+  var pos=(c[n-1]-l120)/((h120-l120)||1);
+
+  var rets=[];
+  for(var r=Math.max(1,n-250);r<n;r++)rets.push(Math.log(c[r]/c[r-1]));
+  var mu=0;for(var z=0;z<rets.length;z++)mu+=rets[z];mu/=rets.length;
+  var v=0;for(var z2=0;z2<rets.length;z2++)v+=(rets[z2]-mu)*(rets[z2]-mu);
+  var rv=Math.sqrt(v/rets.length)*Math.sqrt(244);
+
+  return {px:c[n-1],prev:c[n-2],date:dt[n-1],wkCross:wkCross,wkBull:wkBull,moBull:moBull,
+    fail:fail,crossDate:cdate,pos:pos,rv:rv,
+    wdif:W.dif[iw],wdea:W.dea[iw],mdif:M.dif[im],mdea:M.dea[im],bars:n};
+}
+
+function render(){
+  var cache={};
+  try{cache=JSON.parse(localStorage.getItem(KEY))||{}}catch(e){cache={}}
+  var items=[],g=0,y=0;
+  for(var i=0;i<SY.length;i++){
+    var s=SY[i], e=cache[s.c];
+    if(!e||!e.d||e.d.length<260)continue;
+    var a;try{a=analyze(e.d)}catch(err){continue}
+    var full=a.wkCross&&a.moBull&&a.fail;
+    var near=!full&&a.moBull&&a.fail&&a.wkBull;
+    if(full)g++; if(near)y++;
+    items.push({s:s,a:a,full:full,near:near});
+  }
+  items.sort(function(x,z){
+    var sc=function(o){return o.full?3:(o.near?2:(o.a.wkCross?1:0))};
+    return sc(z)-sc(x)||z.a.pos-x.a.pos;
+  });
+  $("c1").textContent=g; $("c2").textContent=y; $("c3").textContent=items.length;
+
+  var html="";
+  for(var k=0;k<items.length;k++){
+    var it=items[k],s=it.s,a=it.a;
+    var cls=it.full?"card sig":(it.near?"card near":"card");
+    var tag=it.full?'<span class="pill g">买入信号</span>':
+            (it.near?'<span class="pill y">待触发</span>':'<span class="pill">无信号</span>');
+    var chg=(a.px/a.prev-1)*100;
+    var K=Math.round(a.px*1.02/s.st)*s.st;
+    var iv=Math.max(a.rv*1.1,0.14);
+    var premPct=0.4*iv*Math.sqrt(0.5);
+    var per=Math.max(premPct*a.px*s.m,1);
+    var lots=Math.floor(ACCT*0.015/per);
+
+    html+='<div class="'+cls+'">'
+      +'<div class="row"><div><span class="name">'+s.n+'</span> <span class="pill">'+s.s+'</span></div>'
+      +'<div class="px">'+a.px.toFixed(a.px>1000?0:1)+' <span class="'+(chg>=0?"g":"r")+'" style="font-size:12px">'
+      +(chg>=0?"+":"")+chg.toFixed(2)+'%</span></div></div>'
+      +'<div class="row" style="margin-top:6px">'+tag+'<span class="d" style="font-size:11.5px">'
+      +a.date+'</span></div>'
+      +'<div class="meta">'
+      +'<div>周K<b class="'+(a.wkBull?"g":"r")+'">'+(a.wkCross?"金叉":(a.wkBull?"多头":"空头"))+'</b></div>'
+      +'<div>月K<b class="'+(a.moBull?"g":"r")+'">'+(a.moBull?"多头":"空头")+'</b></div>'
+      +'<div>死叉不跌<b class="'+(a.fail?"g":"r")+'">'+(a.fail?"是":"否")+'</b></div>'
+      +'<div>位置<b>'+(a.pos*100).toFixed(0)+'%</b></div>'
+      +'</div>';
+    if(it.full){
+      html+='<div class="plan">'
+        +'<div class="hl"><span>行权价（虚值2%）</span><b>'+K+'</b></div>'
+        +'<div><span>合约</span><b>选剩余5-6个月的认购</b></div>'
+        +'<div><span>理论成本/手</span><b>≈'+money(per)+' 元</b></div>'
+        +'<div class="hl"><span>建议手数（1.5%仓）</span><b>'+lots+' 手</b></div>'
+        +'<div><span>止盈①</span><b>最高收盘−5% 卖半</b></div>'
+        +'<div><span>止盈②</span><b>权利金+200% 全平</b></div>'
+        +'<div><span>保护③④</span><b>−8% / −50% 全平</b></div>'
+        +'</div>';
+    }
+    html+='<div class="hint">周DIF '+a.wdif.toFixed(1)+' / DEA '+a.wdea.toFixed(1)
+      +'　月DIF '+a.mdif.toFixed(1)+' / DEA '+a.mdea.toFixed(1)+'　波动率 '+(a.rv*100).toFixed(0)+'%</div></div>';
+  }
+  $("list").innerHTML=html||'<div class="card d">还没有数据，点右上角“刷新”</div>';
+}
+
+function jsonp(code){
+  return new Promise(function(res,rej){
+    var s=document.createElement("script");
+    s.src=API+code;
+    var t=setTimeout(function(){s.remove();rej(new Error("超时"))},20000);
+    s.onload=function(){clearTimeout(t);var v=window.t;try{delete window.t}catch(e){window.t=undefined}
+      s.remove();if(!v||!v.length)rej(new Error("空"));else res(v)};
+    s.onerror=function(){clearTimeout(t);s.remove();rej(new Error("网络"))};
+    document.head.appendChild(s);
+  });
+}
+
+function refresh(force){
+  var cache={};
+  try{cache=JSON.parse(localStorage.getItem(KEY))||{}}catch(e){cache={}}
+  var todo=[],now=Date.now();
+  for(var i=0;i<SY.length;i++){var e=cache[SY[i].c];
+    if(force||!e||!e.ts||now-e.ts>TTL)todo.push(SY[i].c)}
+  if(!todo.length){
+    var ts=0;for(var j=0;j<SY.length;j++){var c2=cache[SY[j].c];if(c2&&c2.ts>ts)ts=c2.ts}
+    $("stamp").textContent="数据 "+new Date(ts).toLocaleString("zh-CN",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false});
+    render();return;
+  }
+  $("btn").disabled=true;$("btn").textContent="更新中";
+  var done=0;
+  function step(){ if(done>=todo.length){ finish();return }
+    jsonp(todo[done]).then(function(v){
+      var arr=[];for(var i2=Math.max(0,v.length-800);i2<v.length;i2++)
+        arr.push({d:v[i2].d,c:+v[i2].c,h:+v[i2].h,l:+v[i2].l});
+      cache[todo[done]]={ts:Date.now(),d:arr};
+    }).catch(function(){}).then(function(){
+      done++;$("prog").style.width=(done/todo.length*100)+"%";
+      $("stamp").textContent="更新中 "+done+"/"+todo.length;
+      step();
+    });
+  }
+  function finish(){
+    try{localStorage.setItem(KEY,JSON.stringify(cache))}catch(e){}
+    $("btn").disabled=false;$("btn").textContent="刷新";$("prog").style.width="0";
+    $("stamp").textContent="更新于 "+new Date().toLocaleString("zh-CN",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false});
+    render();
+  }
+  step();
+}
+
+$("acct").value=ACCT;
+$("btn").onclick=function(){refresh(true)};
+$("save").onclick=function(){ACCT=+($("acct").value)||300000;
+  localStorage.setItem("optsig_acct",ACCT);render()};
+render();
+refresh(false);
+</script>
+</body>
+</html>
